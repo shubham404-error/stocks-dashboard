@@ -4,4 +4,4 @@ numpy
 yfinance
 plotly
 alpha_vantage
-python-dotenv
+httpx
