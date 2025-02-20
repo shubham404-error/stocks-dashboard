@@ -6,7 +6,6 @@ plotly
 httpx
 os
 dotenv
-google-generativeai
 pillow
 streamlit-option-menu
 warnings
