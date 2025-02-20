@@ -4,6 +4,7 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import http.client
+import os
 import urllib.parse
 import json
 from alpha_vantage.fundamentaldata import FundamentalData
