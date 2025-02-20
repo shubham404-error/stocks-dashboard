@@ -42,7 +42,7 @@ if ticker and start_date and end_date:
         st.error(f"Error fetching stock data: {e}")
 
 # Tabs for Different Data
-pricing_data, fundamental_data, news = st.tabs(["Pricing Data", "Fundamental Data", "Top 10 News"])
+pricing_data, fundamental_data, news = st.tabs(["Pricing Data", "Fundamental Data", "Top News"])
 
 with pricing_data:
     st.header("Price Movements")
