@@ -21,9 +21,19 @@ if ticker and start_date and end_date:
         data = yf.download(ticker, start=start_date, end=end_date)
 
         if not data.empty:
-            # Price Chart
-            fig = px.line(data, x=data.index, y="Adj Close", title=ticker)
+            # Handle cases where Yahoo Finance returns MultiIndex columns
+            if isinstance(data.columns, pd.MultiIndex):
+                data = data['Adj Close'] if 'Adj Close' in data.columns else data['Close']
+            else:
+                data = data[['Adj Close']] if 'Adj Close' in data.columns else data[['Close']]
+
+            # Rename the column to avoid confusion
+            data.rename(columns={data.columns[0]: "Price"}, inplace=True)
+
+            # Plot Price Chart
+            fig = px.line(data, x=data.index, y="Price", title=ticker)
             st.plotly_chart(fig)
+
         else:
             st.error("No data found. Please check the ticker symbol and date range.")
 
@@ -35,17 +45,17 @@ pricing_data, fundamental_data, news = st.tabs(["Pricing Data", "Fundamental Dat
 
 with pricing_data:
     st.header("Price Movements")
-    
+
     if not data.empty:
-        data['% Change'] = data['Adj Close'].pct_change()
+        data['% Change'] = data['Price'].pct_change()
         data.dropna(inplace=True)
-        
+
         st.write(data)
-        
+
         annual_return = data['% Change'].mean() * 252 * 100
         stdev = np.std(data['% Change']) * np.sqrt(252) * 100
         risk_adj_return = annual_return / stdev if stdev != 0 else 0
-        
+
         st.write(f'📈 **Annual Return:** {annual_return:.2f}%')
         st.write(f'📊 **Standard Deviation:** {stdev:.2f}%')
         st.write(f'📉 **Risk-Adjusted Return:** {risk_adj_return:.2f}')
@@ -82,7 +92,7 @@ with fundamental_data:
 # Fetch News from MarketAux API
 with news:
     st.header(f'📢 Latest News for {ticker}')
-    
+
     marketaux_api_token = "YOUR_MARKETAUX_API_KEY"  # Replace with your API Key
     conn = http.client.HTTPSConnection('api.marketaux.com')
 
