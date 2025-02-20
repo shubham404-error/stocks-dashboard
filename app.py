@@ -9,7 +9,7 @@ import urllib.parse
 import json
 from alpha_vantage.fundamentaldata import FundamentalData
 
-st.title('Ritvik Streamlit Stock Dashboard')
+st.title('Shubham's Stock Dashboard')
 
 # Sidebar Inputs
 ticker = st.sidebar.text_input('Ticker', value='AAPL')
