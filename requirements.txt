@@ -3,5 +3,11 @@ pandas
 numpy
 yfinance
 plotly
-alpha_vantage
 httpx
+os
+dotenv
+google-generativeai
+pillow
+streamlit-option-menu
+warnings
+alpha_vantage
