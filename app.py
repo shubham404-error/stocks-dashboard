@@ -66,57 +66,65 @@ with pricing_data:
 # Fetch Fundamental Data from Alpha Vantage
 with fundamental_data:
     alpha_vantage_key = os.getenv('ALPHA_VANTAGE_API_KEY')  # Fetch API Key from Environment
-    fd = FundamentalData(key, output_format='pandas')
 
-    try:
-        st.subheader('Balance Sheet')
-        balance_sheet = fd.get_balance_sheet_annual(ticker)[0]
-        bs = balance_sheet.T[2:]
-        bs.columns = list(balance_sheet.T.iloc[0])
-        st.write(bs)
+    if not alpha_vantage_key:
+        st.warning("Alpha Vantage API key is missing. Set ALPHA_VANTAGE_API_KEY in environment variables.")
+    else:
+        fd = FundamentalData(alpha_vantage_key, output_format='pandas')
 
-        st.subheader('Income Statement')
-        income_statement = fd.get_income_statement_annual(ticker)[0]
-        is1 = income_statement.T[2:]
-        is1.columns = list(income_statement.T.iloc[0])
-        st.write(is1)
+        try:
+            st.subheader('Balance Sheet')
+            balance_sheet = fd.get_balance_sheet_annual(ticker)[0]
+            bs = balance_sheet.T[2:]
+            bs.columns = list(balance_sheet.T.iloc[0])
+            st.write(bs)
 
-        st.subheader('Cash Flow Statement')
-        cash_flow = fd.get_cash_flow_annual(ticker)[0]
-        cf = cash_flow.T[2:]
-        cf.columns = list(cash_flow.T.iloc[0])
-        st.write(cf)
+            st.subheader('Income Statement')
+            income_statement = fd.get_income_statement_annual(ticker)[0]
+            is1 = income_statement.T[2:]
+            is1.columns = list(income_statement.T.iloc[0])
+            st.write(is1)
 
-    except Exception as e:
-        st.error(f"Error fetching fundamental data: {e}")
+            st.subheader('Cash Flow Statement')
+            cash_flow = fd.get_cash_flow_annual(ticker)[0]
+            cf = cash_flow.T[2:]
+            cf.columns = list(cash_flow.T.iloc[0])
+            st.write(cf)
+
+        except Exception as e:
+            st.error(f"Error fetching fundamental data: {e}")
 
 # Fetch News from MarketAux API
 with news:
     st.header(f'📢 Latest News for {ticker}')
 
-    marketaux_api_token = "YOUR_MARKETAUX_API_KEY"  # Replace with your API Key
-    conn = http.client.HTTPSConnection('api.marketaux.com')
+    marketaux_api_key = os.getenv('MARKETAUX_API_KEY')  # Fetch API Key from Environment
 
-    params = urllib.parse.urlencode({
-        'api_token': marketaux_api_token,
-        'symbols': ticker,
-        'limit': 10,
-    })
+    if not marketaux_api_key:
+        st.warning("MarketAux API key is missing. Set MARKETAUX_API_KEY in environment variables.")
+    else:
+        conn = http.client.HTTPSConnection('api.marketaux.com')
 
-    try:
-        conn.request('GET', f'/v1/news/all?{params}')
-        res = conn.getresponse()
-        news_data = json.loads(res.read().decode('utf-8'))
+        params = urllib.parse.urlencode({
+            'api_token': marketaux_api_key,
+            'symbols': ticker,
+            'limit': 10,
+        })
 
-        if 'data' in news_data:
-            for i, article in enumerate(news_data['data'][:10]):
-                st.subheader(f'📰 News {i+1}: {article["title"]}')
-                st.write(f'🗓 Published: {article["published_at"]}')
-                st.write(f'🔗 [Read More]({article["url"]})')
-                st.write(f'📄 Summary: {article["description"]}')
-                st.markdown("---")
-        else:
-            st.warning("No news found.")
+        try:
+            conn.request('GET', f'/v1/news/all?{params}')
+            res = conn.getresponse()
+            news_data = json.loads(res.read().decode('utf-8'))
 
-    except Exception as e:
-        st.error(f"Error fetching news: {e}")
+            if 'data' in news_data:
+                for i, article in enumerate(news_data['data'][:10]):
+                    st.subheader(f'📰 News {i+1}: {article["title"]}')
+                    st.write(f'🗓 Published: {article["published_at"]}')
+                    st.write(f'🔗 [Read More]({article["url"]})')
+                    st.write(f'📄 Summary: {article["description"]}')
+                    st.markdown("---")
+            else:
+                st.warning("No news found.")
+
+        except Exception as e:
+            st.error(f"Error fetching news: {e}")
