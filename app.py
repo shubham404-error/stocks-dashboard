@@ -6,76 +6,106 @@ import plotly.express as px
 import http.client
 import urllib.parse
 import json
-from dotenv import load_dotenv
-import os
-
-# Load API key from environment file
-load_dotenv()
-MARKETAUX_API_KEY = os.getenv("MARKETAUX_API_KEY")
+from alpha_vantage.fundamentaldata import FundamentalData
 
 st.title('Ritvik Streamlit Stock Dashboard')
 
-ticker = st.sidebar.text_input('Ticker')
+# Sidebar Inputs
+ticker = st.sidebar.text_input('Ticker', value='AAPL')
 start_date = st.sidebar.date_input('Start Date')
 end_date = st.sidebar.date_input('End Date')
 
-data = yf.download(ticker,start=start_date, end=end_date)
+if ticker and start_date and end_date:
+    try:
+        # Fetch Stock Data
+        data = yf.download(ticker, start=start_date, end=end_date)
 
-fig = px.line(data, x = data.index, y = data['Adj Close'], title = ticker)
-st.plotly_chart(fig)
+        if not data.empty:
+            # Price Chart
+            fig = px.line(data, x=data.index, y="Adj Close", title=ticker)
+            st.plotly_chart(fig)
+        else:
+            st.error("No data found. Please check the ticker symbol and date range.")
 
+    except Exception as e:
+        st.error(f"Error fetching stock data: {e}")
+
+# Tabs for Different Data
 pricing_data, fundamental_data, news = st.tabs(["Pricing Data", "Fundamental Data", "Top 10 News"])
 
 with pricing_data:
-   st.header("Price Movements")
-   data2 = data
-   data2['% Change'] = data2['Adj Close']/data2['Adj Close'].shift(1) - 1
-   data2.dropna(inplace = True)
-   st.write(data2)
-   annual_return = data2['% Change'].mean()*252*100
-   st.write('Annual Return is ',annual_return,'%')
-   stdev = np.std(data2['% Change'])*np.sqrt(252)
-   st.write('Standard Deviation is ',stdev*100,'%')
-   st.write('Risk Adj. Return is ',annual_return/(stdev*100))
+    st.header("Price Movements")
+    
+    if not data.empty:
+        data['% Change'] = data['Adj Close'].pct_change()
+        data.dropna(inplace=True)
+        
+        st.write(data)
+        
+        annual_return = data['% Change'].mean() * 252 * 100
+        stdev = np.std(data['% Change']) * np.sqrt(252) * 100
+        risk_adj_return = annual_return / stdev if stdev != 0 else 0
+        
+        st.write(f'📈 **Annual Return:** {annual_return:.2f}%')
+        st.write(f'📊 **Standard Deviation:** {stdev:.2f}%')
+        st.write(f'📉 **Risk-Adjusted Return:** {risk_adj_return:.2f}')
+    else:
+        st.warning("No pricing data available.")
 
-from alpha_vantage.fundamentaldata import FundamentalData   
+# Fetch Fundamental Data from Alpha Vantage
 with fundamental_data:
-   key = 'OW1639L63B5UCYYL'
-   fd = FundamentalData(key,output_format = 'pandas')
-   st.subheader('Balance Sheet')
-   balance_sheet = fd.get_balance_sheet_annual(ticker)[0]
-   bs = balance_sheet.T[2:]
-   bs.columns = list(balance_sheet.T.iloc[0])
-   st.write(bs)
-   st.subheader('Income Statement')
-   income_statement = fd.get_income_statement_annual(ticker)[0]
-   is1 = income_statement.T[2:]
-   is1.columns = list(income_statement.T.iloc[0])
-   st.write(is1)
-   st.subheader('Cash Flow Statement')
-   cash_flow = fd.get_cash_flow_annual(ticker)[0]
-   cf = cash_flow.T[2:]
-   cf.columns = list(cash_flow.T.iloc[0])
-   st.write(cf)
+    key = 'YOUR_ALPHA_VANTAGE_API_KEY'  # Replace with your API Key
+    fd = FundamentalData(key, output_format='pandas')
 
+    try:
+        st.subheader('Balance Sheet')
+        balance_sheet = fd.get_balance_sheet_annual(ticker)[0]
+        bs = balance_sheet.T[2:]
+        bs.columns = list(balance_sheet.T.iloc[0])
+        st.write(bs)
+
+        st.subheader('Income Statement')
+        income_statement = fd.get_income_statement_annual(ticker)[0]
+        is1 = income_statement.T[2:]
+        is1.columns = list(income_statement.T.iloc[0])
+        st.write(is1)
+
+        st.subheader('Cash Flow Statement')
+        cash_flow = fd.get_cash_flow_annual(ticker)[0]
+        cf = cash_flow.T[2:]
+        cf.columns = list(cash_flow.T.iloc[0])
+        st.write(cf)
+
+    except Exception as e:
+        st.error(f"Error fetching fundamental data: {e}")
+
+# Fetch News from MarketAux API
 with news:
-    st.header(f'News of {ticker}')
+    st.header(f'📢 Latest News for {ticker}')
+    
+    marketaux_api_token = "YOUR_MARKETAUX_API_KEY"  # Replace with your API Key
     conn = http.client.HTTPSConnection('api.marketaux.com')
+
     params = urllib.parse.urlencode({
-        'api_token': MARKETAUX_API_KEY,
+        'api_token': marketaux_api_token,
         'symbols': ticker,
         'limit': 10,
     })
-    conn.request('GET', f'/v1/news/all?{params}')
-    res = conn.getresponse()
-    data = json.loads(res.read().decode('utf-8'))
-    
-    if 'data' in data:
-        for i, article in enumerate(data['data'][:10]):
-            st.subheader(f'News {i+1}')
-            st.write(article['published_at'])
-            st.write(article['title'])
-            st.write(article['description'])
-            st.write(f"Source: {article['source']} - [Read More]({article['url']})")
-    else:
-        st.write("No news available.")
+
+    try:
+        conn.request('GET', f'/v1/news/all?{params}')
+        res = conn.getresponse()
+        news_data = json.loads(res.read().decode('utf-8'))
+
+        if 'data' in news_data:
+            for i, article in enumerate(news_data['data'][:10]):
+                st.subheader(f'📰 News {i+1}: {article["title"]}')
+                st.write(f'🗓 Published: {article["published_at"]}')
+                st.write(f'🔗 [Read More]({article["url"]})')
+                st.write(f'📄 Summary: {article["description"]}')
+                st.markdown("---")
+        else:
+            st.warning("No news found.")
+
+    except Exception as e:
+        st.error(f"Error fetching news: {e}")
