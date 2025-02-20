@@ -64,7 +64,7 @@ with pricing_data:
 
 # Fetch Fundamental Data from Alpha Vantage
 with fundamental_data:
-    key = 'YOUR_ALPHA_VANTAGE_API_KEY'  # Replace with your API Key
+    alpha_vantage_key = os.getenv('ALPHA_VANTAGE_API_KEY')  # Fetch API Key from Environment
     fd = FundamentalData(key, output_format='pandas')
 
     try:
